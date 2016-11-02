@@ -91,11 +91,10 @@ public final class StringUtils {
      * Uses a default separator of ", ".
      *
      * @param args the collection to be compacted
-     * @param <S> the type parameter of the collection
      * @return a string of all elements in the collection
      * @see #compact(Collection, String)
      */
-    public static <S> String compact(Collection<S> args) {
+    public static String compact(Collection<?> args) {
         return compact(args, ", ");
     }
 
@@ -104,15 +103,14 @@ public final class StringUtils {
      *
      * @param args the collection to be compacted
      * @param separator the string to be places between each element
-     * @param <S> the type parameter of the collection
      * @return a string of all elements in the collection
      */
-    public static <S> String compact(Collection<S> args, String separator) {
+    public static String compact(Collection<?> args, String separator) {
         StringBuilder builder = new StringBuilder();
-        for (S arg : args) {
+        args.forEach(arg -> {
             builder.append(separator);
             builder.append(arg);
-        }
+        });
         if (args.size() > 0)
             return builder.substring(separator.length());
         return builder.toString();
@@ -227,7 +225,7 @@ public final class StringUtils {
             } else if (c == first) {
                 if (i++ != 0)
                     builder.append(c);
-            } else if (c == last) {
+            } else if (c == last ) {
                 if (--i != 0)
                     builder.append(c);
             } else if (c == '\0')

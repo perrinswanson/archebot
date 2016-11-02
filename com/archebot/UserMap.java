@@ -18,57 +18,34 @@ import java.util.stream.Collectors;
 
 public class UserMap implements Iterable<User> {
 
-    private static int count = 0;
-    private final ArcheBot bot;
     private final TreeMap<String, User> users = new TreeMap<>();
-    private final int id = count++;
-    private boolean current = true;
+    private String name;
 
-    UserMap(ArcheBot bot) {
-        this.bot = bot;
-        addUser(bot);
+    public UserMap() {
+        this("default");
     }
 
-    public boolean contains(String nick) {
-        return users.containsKey(nick.toLowerCase());
+    public UserMap(String name) {
+        this.name = name;
+    }
+
+    public boolean contains(String identity) {
+        return users.containsKey(User.parseNick(identity).toLowerCase());
     }
 
     public boolean contains(User user) {
         return users.containsValue(user);
     }
 
-    public int getId() {
-        return id;
+    public String getName() {
+        return name;
     }
 
-    public User getUser(String identity) {
-        return getUser(identity, true);
-    }
-
-    public User getUser(String identity, boolean createNew) throws UnknownUserException {
-        if (identity.isEmpty())
-            return new User();
-        boolean hasLogin = identity.contains("!");
-        boolean hasHostmask = identity.contains("@");
-        String nick;
-        if (hasLogin)
-            nick = identity.substring(0, identity.indexOf('!'));
-        else if (hasHostmask)
-            nick = identity.substring(0, identity.indexOf('@'));
-        else
-            nick = identity;
-        if (!contains(nick)) {
-            if (!createNew)
-                throw new UnknownUserException(nick);
-            User user = new User(nick);
-            user.setBot(bot);
-            if (hasLogin)
-                user.setLogin(identity.substring(identity.indexOf('!') + 1, hasHostmask ? identity.indexOf('@') : identity.length()));
-            if (hasHostmask)
-                user.setHostmask(identity.substring(identity.indexOf('@') + 1));
-            addUser(user);
-        }
-        return users.get(nick.toLowerCase());
+    public User getUser(String identity) throws UnknownUserException {
+        String nick = User.parseNick(identity);
+        if (contains(nick))
+            return users.get(nick.toLowerCase());
+        throw new UnknownUserException(nick);
     }
 
     public TreeSet<String> getUserNicks() {
@@ -83,8 +60,8 @@ public class UserMap implements Iterable<User> {
         return new TreeSet<>(users.values().stream().filter(predicate).collect(Collectors.toSet()));
     }
 
-    public boolean isCurrent() {
-        return current;
+    public void setName(String name) {
+        this.name = name;
     }
 
     public int size() {
@@ -95,6 +72,12 @@ public class UserMap implements Iterable<User> {
         return (int) users.values().stream().filter(predicate).count();
     }
 
+    public Group toGroup() {
+        Group group = new Group(name, size());
+        forEach(group::add);
+        return group;
+    }
+
     @Override
     public Iterator<User> iterator() {
         return users.values().iterator();
@@ -102,25 +85,19 @@ public class UserMap implements Iterable<User> {
 
     @Override
     public String toString() {
-        return "UserMap [" + id + "]";
+        return "UserMap [" + name + "]";
     }
 
-    void addUser(User user) {
-        bot.getConfiguration().loadPermissions(user);
+    protected void addUser(User user) {
         users.put(user.getNick().toLowerCase(), user);
     }
 
-    void deactivate() {
-        current = false;
+    protected void clear() {
+        users.clear();
     }
 
-    void removeUser(String nick) {
+    protected void removeUser(String nick) {
         if (contains(nick))
-            bot.getConfiguration().storePermissions(getUser(nick));
-        users.remove(nick.toLowerCase());
-    }
-
-    public static int getCount() {
-        return count;
+            users.remove(nick.toLowerCase());
     }
 }

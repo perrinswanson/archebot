@@ -28,7 +28,7 @@ public class Handler<B extends ArcheBot> {
      * @param action the action that was sent
      */
     public void onAction(B bot, User user, String action) {
-        onAction(bot, bot.getChannelMap().getChannel(user.getNick()), user, action);
+        onAction(bot, bot.createChannel(user.getNick()), user, action);
     }
 
     /**
@@ -75,7 +75,7 @@ public class Handler<B extends ArcheBot> {
         else if (command.requiresNickservLogin() && !user.isIdentified())
             user.message("You must be identified with NickServ to run that command.");
         else if (user.hasPermission(command.getPermission()))
-            command.execute(bot, bot.getChannelMap().getChannel(user.getNick()), user, args);
+            command.execute(bot, bot.createChannel(user.getNick()), user, args);
         else
             user.message("You do not have permission to do that. (Required permission: %s)", command.getPermission());
     }
@@ -107,7 +107,7 @@ public class Handler<B extends ArcheBot> {
      * @param args the additional arguments that were received
      */
     public void onCTCPCommand(B bot, User user, String command, String args) {
-        onCTCPCommand(bot, bot.getChannelMap().getChannel(user.getNick()), user, command, args);
+        onCTCPCommand(bot, bot.createChannel(user.getNick()), user, command, args);
     }
 
     /**
@@ -176,7 +176,7 @@ public class Handler<B extends ArcheBot> {
      * @param message the message that was sent
      */
     public void onMessage(B bot, User user, String message) {
-        onMessage(bot, bot.getChannelMap().getChannel(user.getNick()), user, message);
+        onMessage(bot, bot.createChannel(user.getNick()), user, message);
     }
 
     /**
@@ -275,7 +275,7 @@ public class Handler<B extends ArcheBot> {
      * @param notice the notice that was sent
      */
     public void onNotice(B bot, User user, String notice) {
-        onNotice(bot, bot.getChannelMap().getChannel(user.getNick()), user, notice);
+        onNotice(bot, bot.createChannel(user.getNick()), user, notice);
     }
 
     /**

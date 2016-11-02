@@ -10,9 +10,6 @@ package com.archebot;
 
 public enum Property {
 
-    /** Lets commands be run with a space between the prefix and the command */
-    allowSeparatePrefix(true),
-
     /** Lets the configuration be saved automatically on shutdown */
     autoSaveConfig(true),
 
@@ -30,9 +27,6 @@ public enum Property {
 
     /** Lets &[#] shortcuts be used to format messages */
     enableFormatting(true),
-
-    /** Lets commands by users with permission.ignore be treated as regular messages */
-    enableIgnore(true),
 
     /** Lets logging be turned on and off */
     enableLogging(true),

@@ -9,12 +9,14 @@
 package com.archebot;
 
 import com.archebot.exceptions.UnknownModeException;
+import com.archebot.utilities.StringUtils;
 
 import java.util.*;
 
 public class Server implements Comparable<Server> {
 
-    private final String name;
+    protected final ArcheBot bot;
+    protected final String name;
     private final ArrayList<String> motd = new ArrayList<>();
     private final HashMap<String, String> data = new HashMap<>();
     private final TreeMap<Character, ModeType> modes = new TreeMap<>();
@@ -24,8 +26,29 @@ public class Server implements Comparable<Server> {
     private String description = "";
     private String version = "";
 
-    protected Server(String name) {
+    public Server(ArcheBot bot, String name) {
+        this.bot = bot;
         this.name = name;
+    }
+
+    public void debug() {
+        bot.log(name);
+        if (!description.isEmpty())
+            bot.log("   Description: " + description);
+        if (!version.isEmpty())
+            bot.log("   Version: " + version);
+        bot.log("   MOTD: %d lines", motd.size());
+        if (modes.size() > 0)
+            bot.log("   Modes: " + StringUtils.compact(modes.keySet(), ""));
+        if (userModes.size() > 0)
+            bot.log("   User modes: " + StringUtils.compact(userModes, ""));
+        if (prefixes.size() > 0)
+            bot.log("   Prefixes: " + StringUtils.compact(prefixes.keySet(), ""));
+        bot.log("   Data types: %d known", data.size());
+    }
+
+    public ArcheBot getBot() {
+        return bot;
     }
 
     public String getData(String type) {
@@ -108,39 +131,39 @@ public class Server implements Comparable<Server> {
         return name;
     }
 
-    void addData(String type, String value) {
+    protected void addData(String type, String value) {
         data.put(type.toLowerCase(), value);
     }
 
-    void addMode(char mode, ModeType type) {
+    protected void addMode(char mode, ModeType type) {
         modes.put(mode, type);
     }
 
-    void addMotdLine(String line) {
+    protected void addMotdLine(String line) {
         motd.add(line);
     }
 
-    void addPrefix(char prefix, char mode) {
+    protected void addPrefix(char prefix, char mode) {
         prefixes.put(prefix, mode);
     }
 
-    void addUserMode(char mode) {
+    protected void addUserMode(char mode) {
         userModes.add(mode);
     }
 
-    void addValueMode(char mode) {
+    protected void addValueMode(char mode) {
         valueModes.add(mode);
     }
 
-    void clearMotd() {
+    protected void clearMotd() {
         motd.clear();
     }
 
-    void setDescription(String description) {
+    protected void setDescription(String description) {
         this.description = description;
     }
 
-    void setVersion(String version) {
+    protected void setVersion(String version) {
         this.version = version;
     }
 }

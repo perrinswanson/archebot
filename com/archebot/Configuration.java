@@ -35,6 +35,12 @@ public class Configuration {
         this.name = name;
     }
 
+    public Configuration(String nick, String server) {
+        name = server + "-" + nick;
+        setNick(nick);
+        setServer(server);
+    }
+
     public void addChannel(String channel) {
         channels.add(channel);
     }

@@ -35,7 +35,7 @@ public class Group implements Comparable<Group>, Iterable<User> {
     }
 
     public void add(User user) {
-        if (maxSize == 0 || users.size() < maxSize) {
+        if (maxSize <= 0 || users.size() < maxSize) {
             users.add(user);
             permissions.forEach(user::givePermission);
         }

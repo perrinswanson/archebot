@@ -18,12 +18,16 @@ import java.util.stream.Collectors;
 
 public class ServerMap implements Iterable<Server> {
 
-    private static int count = 0;
     private final TreeMap<String, Server> servers = new TreeMap<>();
-    private final int id = count++;
-    private boolean current = true;
+    private String name;
 
-    ServerMap() {}
+    public ServerMap() {
+        this("default");
+    }
+
+    public ServerMap(String name) {
+        this.name = name;
+    }
 
     public boolean contains(String name) {
         return servers.containsKey(name.toLowerCase());
@@ -33,19 +37,13 @@ public class ServerMap implements Iterable<Server> {
         return servers.containsValue(server);
     }
 
-    public int getId() {
-        return id;
+    public String getName() {
+        return name;
     }
 
-    public Server getServer(String name) {
-        return getServer(name, true);
-    }
-
-    public Server getServer(String name, boolean createNew) throws UnknownServerException {
+    public Server getServer(String name) throws UnknownServerException {
         if (contains(name))
             return servers.get(name.toLowerCase());
-        if (createNew)
-            return new Server(name);
         throw new UnknownServerException(name);
     }
 
@@ -61,8 +59,8 @@ public class ServerMap implements Iterable<Server> {
         return new TreeSet<>(servers.values().stream().filter(predicate).collect(Collectors.toSet()));
     }
 
-    public boolean isCurrent() {
-        return current;
+    public void setName(String name) {
+        this.name = name;
     }
 
     public int size() {
@@ -80,18 +78,19 @@ public class ServerMap implements Iterable<Server> {
 
     @Override
     public String toString() {
-        return "ServerMap [" + id + "]";
+        return "ServerMap [" + servers.size() + "]";
     }
 
-    void addServer(Server server) {
+    protected void addServer(Server server) {
         servers.put(server.getName().toLowerCase(), server);
     }
 
-    void deactivate() {
-        current = false;
+    protected void clear() {
+        servers.clear();
     }
 
-    public static int getCount() {
-        return count;
+    protected void removeServer(String name) {
+        if (contains(name))
+            servers.remove(name.toLowerCase());
     }
 }

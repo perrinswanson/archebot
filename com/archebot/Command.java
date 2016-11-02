@@ -8,15 +8,16 @@
  */
 package com.archebot;
 
+import java.util.HashMap;
+
 public abstract class Command<B extends ArcheBot> implements Comparable<Command<B>> {
 
     private final String name;
     private final String[] ids;
+    private final HashMap<String, String> data = new HashMap<>();
     private boolean enabled = true;
     private boolean requireLogin = false;
     private Permission permission = Permission.DEFAULT;
-    private String syntax = "";
-    private String[] description = {};
 
     public Command(String name, String... ids) {
         this.name = name;
@@ -26,11 +27,21 @@ public abstract class Command<B extends ArcheBot> implements Comparable<Command<
     public abstract void execute(B bot, Channel channel, User sender, String[] args);
 
     public void execute(B bot, User sender, String[] args) {
-        execute(bot, bot.getChannelMap().getChannel(sender.getNick()), sender, args);
+        execute(bot, bot.createChannel(sender.getNick()), sender, args);
     }
 
-    public String[] getDescription() {
-        return description;
+    public HashMap<String, String> getData() {
+        return new HashMap<>(data);
+    }
+
+    public String getData(String type) {
+        if (hasData(type))
+            return data.get(type.toLowerCase());
+        return "";
+    }
+
+    public String getDescription() {
+        return getData("description");
     }
 
     public String[] getIds() {
@@ -42,11 +53,15 @@ public abstract class Command<B extends ArcheBot> implements Comparable<Command<
     }
 
     public String getSyntax() {
-        return syntax;
+        return getData("syntax");
     }
 
     public Permission getPermission() {
         return permission;
+    }
+
+    public boolean hasData(String type) {
+        return data.containsKey(type.toLowerCase());
     }
 
     public boolean isEnabled() {
@@ -57,8 +72,12 @@ public abstract class Command<B extends ArcheBot> implements Comparable<Command<
         return requireLogin;
     }
 
-    public void setDescription(String... description) {
-        this.description = description;
+    public void setData(String type, String value) {
+        data.put(type.toLowerCase(), value);
+    }
+
+    public void setDescription(String description) {
+        setData("description", description);
     }
 
     public void setEnabled(boolean enabled) {
@@ -66,7 +85,7 @@ public abstract class Command<B extends ArcheBot> implements Comparable<Command<
     }
 
     public void setSyntax(String syntax) {
-        this.syntax = syntax;
+        setData("syntax", syntax);
     }
 
     public void setPermission(String permission) {

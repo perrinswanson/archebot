@@ -19,9 +19,16 @@ import java.util.stream.Collectors;
 
 public class CommandMap implements Iterable<Command> {
 
-    private static int count = 0;
     private final TreeMap<String, Command> commands = new TreeMap<>();
-    private final int id = count++;
+    private String name;
+
+    public CommandMap() {
+        this("default");
+    }
+
+    public CommandMap(String name) {
+        this.name = name;
+    }
 
     public Command getCommand(String id) throws UnknownCommandException {
         if (isRegistered(id))
@@ -37,8 +44,8 @@ public class CommandMap implements Iterable<Command> {
         return new TreeSet<>(commands.values().stream().filter(predicate).collect(Collectors.toSet()));
     }
 
-    public int getId() {
-        return id;
+    public String getName() {
+        return name;
     }
 
     public TreeSet<String> getRegisteredIds() {
@@ -62,6 +69,10 @@ public class CommandMap implements Iterable<Command> {
 
     public void register(String id, Command command) {
         commands.put(id.toLowerCase(), command);
+    }
+
+    public void setName(String name) {
+        this.name = name;
     }
 
     public int size() {
@@ -95,10 +106,6 @@ public class CommandMap implements Iterable<Command> {
 
     @Override
     public String toString() {
-        return "CommandMap [" + id + "]";
-    }
-
-    public static int getCount() {
-        return count;
+        return "CommandMap [" + name + "]";
     }
 }

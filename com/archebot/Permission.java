@@ -19,10 +19,10 @@ public class Permission implements Comparable<Permission>, Iterable<Permission> 
 
     private static final HashMap<String, Permission> permissions = new HashMap<>();
     public static final Permission OPERATOR = new Permission("operator", true);
-    public static final Permission DEFAULT  = new Permission("default", false);
-    public static final Permission IGNORE   = new Permission("ignore", true);
+    public static final Permission DEFAULT = new Permission("default", false);
+    public static final Permission IGNORE = new Permission("ignore", true);
     private final String name;
-    private final TreeSet<Permission> inclusions = new TreeSet<>();
+    private final TreeSet<Permission> subPermissions = new TreeSet<>();
     private boolean savable;
 
     private Permission(String name, boolean savable) {
@@ -31,12 +31,12 @@ public class Permission implements Comparable<Permission>, Iterable<Permission> 
         permissions.put(name.toLowerCase(), this);
     }
 
-    public TreeSet<Permission> getInclusions() {
-        return new TreeSet<>(inclusions);
+    public TreeSet<Permission> getSubPermissions() {
+        return new TreeSet<>(subPermissions);
     }
 
-    public TreeSet<Permission> getInclusions(Predicate<Permission> predicate) {
-        return new TreeSet<>(inclusions.stream().filter(predicate).collect(Collectors.toSet()));
+    public TreeSet<Permission> getSubPermissions(Predicate<Permission> predicate) {
+        return new TreeSet<>(subPermissions.stream().filter(predicate).collect(Collectors.toSet()));
     }
 
     public String getName() {
@@ -44,9 +44,9 @@ public class Permission implements Comparable<Permission>, Iterable<Permission> 
     }
 
     public void include(Permission permission, Permission... permissions) {
-        inclusions.add(permission);
+        subPermissions.add(permission);
         if (permissions.length > 0)
-            inclusions.addAll(Arrays.asList(permissions));
+            subPermissions.addAll(Arrays.asList(permissions));
     }
 
     public void include(String permission, String... permissions) {
@@ -60,7 +60,7 @@ public class Permission implements Comparable<Permission>, Iterable<Permission> 
     }
 
     public boolean includes(Permission permission) {
-        return inclusions.contains(permission);
+        return subPermissions.contains(permission);
     }
 
     public boolean isSavable() {
@@ -83,7 +83,7 @@ public class Permission implements Comparable<Permission>, Iterable<Permission> 
 
     @Override
     public Iterator<Permission> iterator() {
-        return inclusions.iterator();
+        return subPermissions.iterator();
     }
 
     @Override

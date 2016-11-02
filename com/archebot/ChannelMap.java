@@ -18,14 +18,15 @@ import java.util.stream.Collectors;
 
 public class ChannelMap implements Iterable<Channel> {
 
-    private static int count = 0;
-    private final ArcheBot bot;
     private final TreeMap<String, Channel> channels = new TreeMap<>();
-    private final int id = count++;
-    private boolean current = true;
+    private String name;
 
-    ChannelMap(ArcheBot bot) {
-        this.bot = bot;
+    public ChannelMap() {
+        this("default");
+    }
+
+    public ChannelMap(String name) {
+        this.name = name;
     }
 
     public boolean contains(String name) {
@@ -36,15 +37,9 @@ public class ChannelMap implements Iterable<Channel> {
         return channels.containsValue(channel);
     }
 
-    public Channel getChannel(String name) {
-        return getChannel(name, true);
-    }
-
-    public Channel getChannel(String name, boolean createNew) throws UnknownChannelException {
+    public Channel getChannel(String name) throws UnknownChannelException {
         if (contains(name))
             return channels.get(name.toLowerCase());
-        if (createNew)
-            return new Channel(bot, name);
         throw new UnknownChannelException(name);
     }
 
@@ -60,12 +55,12 @@ public class ChannelMap implements Iterable<Channel> {
         return new TreeSet<>(channels.values().stream().filter(predicate).collect(Collectors.toSet()));
     }
 
-    public int getId() {
-        return id;
+    public String getName() {
+        return name;
     }
 
-    public boolean isCurrent() {
-        return current;
+    public void setName(String name) {
+        this.name = name;
     }
 
     public int size() {
@@ -83,22 +78,19 @@ public class ChannelMap implements Iterable<Channel> {
 
     @Override
     public String toString() {
-        return "ChannelMap [" + id + "]";
+        return "ChannelMap [" + name + "]";
     }
 
-    void addChannel(Channel channel) {
+    protected void addChannel(Channel channel) {
         channels.put(channel.getName().toLowerCase(), channel);
     }
 
-    void deactivate() {
-        current = false;
+    protected void clear() {
+        channels.clear();
     }
 
-    void removeChannel(String name) {
-        channels.remove(name.toLowerCase());
-    }
-
-    public static int getCount() {
-        return count;
+    protected void removeChannel(String name) {
+        if (contains(name))
+            channels.remove(name.toLowerCase());
     }
 }

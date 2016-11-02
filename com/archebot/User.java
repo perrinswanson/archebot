@@ -9,6 +9,7 @@
 package com.archebot;
 
 import com.archebot.exceptions.ConnectionStateException;
+import com.archebot.utilities.StringUtils;
 
 import java.util.HashMap;
 import java.util.TreeSet;
@@ -17,22 +18,19 @@ import java.util.stream.Collectors;
 
 public class User implements Comparable<User> {
 
+    protected final ArcheBot bot;
     private final HashMap<Permission, Boolean> permissions = new HashMap<>();
     private final TreeSet<Character> modes = new TreeSet<>();
     private boolean known = false;
     private String login = "";
     private String hostmask = "";
     private String realname = "";
-    private ArcheBot bot;
     private Server server;
     private String nick;
     private String nickservLogin;
 
-    protected User() {
-        this("");
-    }
-
-    protected User(String nick) {
+    public User(ArcheBot bot, String nick) {
+        this.bot = bot;
         this.nick = nick;
         givePermission(Permission.DEFAULT);
     }
@@ -50,12 +48,30 @@ public class User implements Comparable<User> {
         givePermission(Permission.DEFAULT);
     }
 
-    public String getIdentity() {
-        return nick + (login.isEmpty() ? "" : "!" + login) + (hostmask.isEmpty() ? "" : "@" + hostmask);
+    public void debug() {
+        bot.log(getIdentity());
+        if (!realname.isEmpty())
+            bot.log("   Real name: " + realname);
+        if (server != null)
+            bot.log("   Server: " + server);
+        if (isIdentified())
+            bot.log("   Nickserv login: " + nickservLogin);
+        bot.log("   Known: " + known);
+        bot.log("   Permissions: " + StringUtils.compact(permissions.keySet()));
+        if (modes.size() > 0)
+            bot.log("   Modes: " + StringUtils.compact(modes, ""));
+    }
+
+    public ArcheBot getBot() {
+        return bot;
     }
 
     public String getHostmask() {
         return hostmask;
+    }
+
+    public String getIdentity() {
+        return nick + (login.isEmpty() ? "" : "!" + login) + (hostmask.isEmpty() ? "" : "@" + hostmask);
     }
 
     public String getLogin() {
@@ -136,7 +152,11 @@ public class User implements Comparable<User> {
 
     public void removePermission(Permission permission) {
         permissions.remove(permission);
-        permission.getInclusions(p -> hasPermission(p) && !isIncluded(p)).forEach(this::removePermission);
+        permission.getSubPermissions(p -> hasPermission(p) && !isIncluded(p)).forEach(this::removePermission);
+    }
+
+    public void whois() {
+        bot.send("WHOIS " + nick);
     }
 
     @Override
@@ -149,52 +169,56 @@ public class User implements Comparable<User> {
         return nick;
     }
 
-    void addMode(char mode) {
+    protected void addMode(char mode) {
         modes.add(mode);
     }
 
-    void clearModes() {
+    protected void clearModes() {
         modes.clear();
     }
 
-    void removeMode(char mode) {
+    protected void removeMode(char mode) {
         modes.remove(mode);
     }
 
-    void setBot(ArcheBot bot) {
-        this.bot = bot;
-    }
-
-    void setHostmask(String hostmask) {
+    protected void setHostmask(String hostmask) {
         this.hostmask = hostmask;
     }
 
-    void setKnown(boolean known) {
+    protected void setKnown(boolean known) {
         this.known = known;
     }
 
-    void setLogin(String login) {
+    protected void setLogin(String login) {
         this.login = login;
     }
 
-    void setNick(String nick) {
+    protected void setNick(String nick) {
         this.nick = nick;
     }
 
-    void setNickservLogin(String nickservLogin) {
+    protected void setNickservLogin(String nickservLogin) {
         this.nickservLogin = nickservLogin;
     }
 
-    void setRealname(String realname) {
+    protected void setRealname(String realname) {
         this.realname = realname;
     }
 
-    void setServer(Server server) {
+    protected void setServer(Server server) {
         this.server = server;
     }
 
     private void givePermission(Permission permission, boolean included) {
         permissions.put(permission, included);
-        permission.getInclusions(p -> !hasPermission(p)).forEach(p -> givePermission(p, false));
+        permission.getSubPermissions(p -> !hasPermission(p)).forEach(p -> givePermission(p, false));
+    }
+
+    public static String parseNick(String identity) {
+        if (identity.contains("!"))
+            return identity.substring(0, identity.indexOf('!'));
+        if (identity.contains("@"))
+            return identity.substring(0, identity.indexOf('@'));
+        return identity;
     }
 }
