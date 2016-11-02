@@ -11,6 +11,7 @@ package com.archebot;
 import com.archebot.exceptions.ConnectionStateException;
 import com.archebot.exceptions.UnknownModeException;
 import com.archebot.exceptions.UnknownUserException;
+import com.archebot.utilities.StringUtils;
 
 import java.util.*;
 import java.util.function.Predicate;
@@ -18,8 +19,8 @@ import java.util.stream.Collectors;
 
 public class Channel implements Comparable<Channel>, Iterable<User> {
 
-    private final ArcheBot bot;
-    private final String name;
+    protected final ArcheBot bot;
+    protected final String name;
     private final TreeMap<User, HashSet<Character>> users = new TreeMap<>();
     private final HashMap<Character, String> modes = new HashMap<>();
     private final HashMap<Character, HashSet<String>> listModes = new HashMap<>();
@@ -27,7 +28,7 @@ public class Channel implements Comparable<Channel>, Iterable<User> {
     private String topic = "";
     private String topicSetter = "";
 
-    protected Channel(ArcheBot bot, String name) {
+    public Channel(ArcheBot bot, String name) {
         this.bot = bot;
         this.name = name;
     }
@@ -36,12 +37,43 @@ public class Channel implements Comparable<Channel>, Iterable<User> {
         ctcp("ACTION", action, objects);
     }
 
+    public void addMode(char mode) throws ConnectionStateException {
+        bot.send("MODE " + name + " +" + mode);
+    }
+
+    public void addMode(char mode, User user) throws ConnectionStateException {
+        addMode(mode, user.getNick());
+    }
+
+    public void addMode(char mode, String value) throws ConnectionStateException {
+        bot.send("MODE " + name + " +" + mode + " " + value);
+    }
+
     public boolean contains(User user) {
         return users.containsKey(user);
     }
 
     public void ctcp(String command, String args, Object... objects) throws ConnectionStateException {
         bot.send("PRIVMSG " + name + " :\1" + command + " " + args + "\1", objects);
+    }
+
+    public void debug() {
+        bot.log(name);
+        bot.log("   Size: %s", StringUtils.formatQuantity(users.size(), "user", "users"));
+        if (!topic.isEmpty()) {
+            bot.log("   Topic: " + topic);
+            bot.log("   Topic setter: " + topicSetter);
+            bot.log("   Topic timestamp: " + topicTimestamp);
+        }
+        if (modes.size() > 0)
+            bot.log("   Modes: " + StringUtils.compact(modes.keySet(), ""));
+        if (listModes.size() > 0)
+            for (char mode : listModes.keySet())
+                bot.log("   Entries for list mode %s: " + StringUtils.compact(getValues(mode)), mode);
+    }
+
+    public ArcheBot getBot() {
+        return bot;
     }
 
     public HashSet<Character> getListModes() {
@@ -130,30 +162,6 @@ public class Channel implements Comparable<Channel>, Iterable<User> {
         bot.send("PRIVMSG " + name + " :" + message, objects);
     }
 
-    public void modeAdd(char mode) throws ConnectionStateException {
-        bot.send("MODE " + name + " +" + mode);
-    }
-
-    public void modeAdd(char mode, User user) throws ConnectionStateException {
-        modeAdd(mode, user.getNick());
-    }
-
-    public void modeAdd(char mode, String value) throws ConnectionStateException {
-        bot.send("MODE " + name + " +" + mode + " " + value);
-    }
-
-    public void modeRemove(char mode) throws ConnectionStateException {
-        bot.send("MODE " + name + " -" + mode);
-    }
-
-    public void modeRemove(char mode, User user) throws ConnectionStateException {
-        modeRemove(mode, user.getNick());
-    }
-
-    public void modeRemove(char mode, String value) throws ConnectionStateException {
-        bot.send("MODE " + name + " -" + mode + " " + value);
-    }
-
     public void notify(String notice, Object... objects) throws ConnectionStateException {
         bot.send("NOTICE " + name + " :" + notice, objects);
     }
@@ -162,12 +170,30 @@ public class Channel implements Comparable<Channel>, Iterable<User> {
         bot.send("PART " + name);
     }
 
+    public void removeMode(char mode) throws ConnectionStateException {
+        bot.send("MODE " + name + " -" + mode);
+    }
+
+    public void removeMode(char mode, User user) throws ConnectionStateException {
+        removeMode(mode, user.getNick());
+    }
+
+    public void removeMode(char mode, String value) throws ConnectionStateException {
+        bot.send("MODE " + name + " -" + mode + " " + value);
+    }
+
     public int size() {
         return users.size();
     }
 
     public int size(Predicate<User> predicate) {
         return (int) users.keySet().stream().filter(predicate).count();
+    }
+
+    public Group toGroup() {
+        Group group = new Group(name, size());
+        forEach(group::add);
+        return group;
     }
 
     public void topic(String topic, Object... objects) throws ConnectionStateException {
@@ -189,26 +215,35 @@ public class Channel implements Comparable<Channel>, Iterable<User> {
         return name;
     }
 
-    void addListMode(char mode, String value) {
+    protected void addListMode(char mode, String value) {
         if (!hasListMode(mode))
             listModes.put(mode, new HashSet<>());
         listModes.get(mode).add(value);
     }
 
-    void addMode(User user, char mode) {
+    protected void addUser(User user) {
+        users.put(user, new HashSet<>());
+    }
+
+    protected void modeAdd(User user, char mode) {
         if (contains(user) && !hasMode(user, mode))
             users.get(user).add(mode);
     }
 
-    void addMode(char mode, String value) {
+    protected void modeAdd(char mode, String value) {
         modes.put(mode, value);
     }
 
-    void addUser(User user) {
-        users.put(user, new HashSet<>());
+    protected void modeRemove(User user, char mode) {
+        if (contains(user) && hasMode(user, mode))
+            users.get(user).remove(mode);
     }
 
-    void removeListMode(char mode, String value){
+    protected void modeRemove(char mode) {
+        modes.remove(mode);
+    }
+
+    protected void removeListMode(char mode, String value){
         if (hasListMode(mode)) {
             listModes.get(mode).remove(value);
             if (listModes.get(mode).size() == 0)
@@ -216,28 +251,19 @@ public class Channel implements Comparable<Channel>, Iterable<User> {
         }
     }
 
-    void removeMode(User user, char mode) {
-        if (contains(user) && hasMode(user, mode))
-            users.get(user).remove(mode);
-    }
-
-    void removeMode(char mode) {
-        modes.remove(mode);
-    }
-
-    void removeUser(User user) {
+    protected void removeUser(User user) {
         users.remove(user);
     }
 
-    void setTopic(String topic) {
+    protected void setTopic(String topic) {
         this.topic = topic;
     }
 
-    void setTopicSetter(String topicSetter) {
+    protected void setTopicSetter(String topicSetter) {
         this.topicSetter = topicSetter;
     }
 
-    void setTopicTimestamp(long topicTimestamp) {
+    protected void setTopicTimestamp(long topicTimestamp) {
         this.topicTimestamp = topicTimestamp;
     }
 }

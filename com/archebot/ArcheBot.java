@@ -9,6 +9,8 @@
 package com.archebot;
 
 import com.archebot.exceptions.ConnectionStateException;
+import com.archebot.exceptions.UnknownCommandException;
+import com.archebot.utilities.StringUtils;
 
 import java.io.IOException;
 import java.io.PrintStream;
@@ -23,44 +25,40 @@ import java.util.Date;
  * features.
  *
  * @author Perrin Swanson
- * @version ArcheBot 2.0
+ * @version ArcheBot 2.1
  * @see Connection
  * @see User
  * @since ArcheBot 1.0
  */
 public class ArcheBot extends User {
 
-    public static final String VERSION = "2.0";
+    public static final String VERSION = "2.1";
     protected static final SimpleDateFormat dateFormat = new SimpleDateFormat("[HH:mm:ss:SSS] ");
     private final long startTime = System.currentTimeMillis();
     private long connectTime = 0;
+    private ChannelMap channelMap = new ChannelMap();
     private CommandMap commandMap = new CommandMap();
     private ServerMap serverMap = new ServerMap();
+    private UserMap userMap = new UserMap();
     private PrintStream logStream = System.out;
-    private PrintStream errorLogStream = System.err;
-    private PrintStream inputLogStream = System.out;
-    private PrintStream outputLogStream = System.out;
     private State state = State.idle;
-    private ChannelMap channelMap;
-    private UserMap userMap;
+    private Configuration configuration;
     private Connection connection;
     private Handler handler;
-    private Configuration configuration;
 
     public ArcheBot() {
         this(new Configuration());
     }
 
-    public ArcheBot(String configuration) {
-        this(new Configuration(configuration));
+    public ArcheBot(String nick, String server) {
+        this(new Configuration(nick, server));
     }
 
     public ArcheBot(Configuration configuration) {
-        setBot(this);
+        super(null, configuration.isSet(Property.nick) ? configuration.getNick() : "");
         setKnown(true);
         setConfiguration(configuration);
-        channelMap = new ChannelMap(this);
-        userMap = new UserMap(this);
+        userMap.addUser(this);
         log("ArcheBot (Version %s) loaded.", VERSION);
         log("Initial configuration: " + configuration.getName());
     }
@@ -69,18 +67,6 @@ public class ArcheBot extends User {
         if (state == State.idle)
             throw new ConnectionStateException(state, "Unable to break handler thread");
         connection.breakThread();
-    }
-
-    public void clearData() {
-        if (configuration.getBoolean(Property.autoSavePerms))
-            userMap.forEach(configuration::storePermissions);
-        channelMap.deactivate();
-        channelMap = new ChannelMap(this);
-        serverMap.deactivate();
-        serverMap = new ServerMap();
-        userMap.deactivate();
-        userMap = new UserMap(this);
-        clearModes();
     }
 
     public void connect() throws ConnectionStateException {
@@ -115,6 +101,20 @@ public class ArcheBot extends User {
             throw new ConnectionStateException(state, "Unable to connect");
     }
 
+    public Channel createChannel(String name) {
+        return new Channel(this, name);
+    }
+
+    public Server createServer(String name) {
+        return new Server(this, name);
+    }
+
+    public User createUser(String nick) {
+        User user = new User(this, nick);
+        configuration.loadPermissions(user);
+        return user;
+    }
+
     public void disconnect() throws ConnectionStateException {
         disconnect("Shutting down");
     }
@@ -143,8 +143,21 @@ public class ArcheBot extends User {
         }
     }
 
+    public Channel getChannel(String name) {
+        if (!channelMap.contains(name)) {
+            Channel channel = createChannel(name);
+            channelMap.addChannel(channel);
+            return channel;
+        }
+        return channelMap.getChannel(name);
+    }
+
     public ChannelMap getChannelMap() {
         return channelMap;
+    }
+
+    public Command getCommand(String id) throws UnknownCommandException {
+        return commandMap.getCommand(id);
     }
 
     public CommandMap getCommandMap() {
@@ -163,6 +176,15 @@ public class ArcheBot extends User {
         return System.currentTimeMillis() - startTime;
     }
 
+    public Server getServer(String name) {
+        if (!serverMap.contains(name)) {
+            Server server = createServer(name);
+            serverMap.addServer(server);
+            return server;
+        }
+        return serverMap.getServer(name);
+    }
+
     public ServerMap getServerMap() {
         return serverMap;
     }
@@ -175,6 +197,21 @@ public class ArcheBot extends User {
         return state == State.idle ? -1 : System.currentTimeMillis() - connectTime;
     }
 
+    public User getUser(String identity) {
+        if (identity.isEmpty())
+            return new User(this, "");
+        if (!userMap.contains(identity)) {
+            User user = createUser(User.parseNick(identity));
+            userMap.addUser(user);
+            if (identity.contains("!"))
+                user.setLogin(identity.substring(identity.indexOf('!') + 1, identity.contains("@") ? identity.indexOf('@') : identity.length()));
+            if (identity.contains("@"))
+                user.setHostmask(identity.substring(identity.indexOf('@') + 1));
+            return user;
+        }
+        return userMap.getUser(identity);
+    }
+
     public UserMap getUserMap() {
         return userMap;
     }
@@ -183,16 +220,20 @@ public class ArcheBot extends User {
         return handler != null;
     }
 
+    public boolean isConnected() {
+        return state == State.connected;
+    }
+
     public void log(String message, Object... objects) {
         if (objects.length > 0)
             message = String.format(message, objects);
-        print(logStream, "<> ", message);
+        print("<> ", message);
     }
 
     public void logError(String error, Object... objects) {
         if (objects.length > 0)
             error = String.format(error, objects);
-        print(errorLogStream, "== Error: ", error);
+        print("== Error: ", error);
     }
 
     public void send(Output output) throws ConnectionStateException {
@@ -208,6 +249,10 @@ public class ArcheBot extends User {
             throw new ConnectionStateException(state, "Unable to send output [" + output + "]");
     }
 
+    public void setChannelMap(ChannelMap channelMap) {
+        this.channelMap = channelMap;
+    }
+
     public void setCommandMap(CommandMap commandMap) {
         this.commandMap = commandMap;
     }
@@ -219,36 +264,74 @@ public class ArcheBot extends User {
             throw new ConnectionStateException(state, "Unable to set configuration");
     }
 
-    public void setErrorLogStream(PrintStream stream) {
-        errorLogStream = stream;
-    }
-
     public void setHandler(Handler handler) {
         this.handler = handler;
-    }
-
-    public void setInputLogStream(PrintStream stream) {
-        inputLogStream = stream;
     }
 
     public void setLogStream(PrintStream stream) {
         logStream = stream;
     }
 
-    public void setOutputLogStream(PrintStream stream) {
-        outputLogStream = stream;
+    public void setServerMap(ServerMap serverMap) {
+        this.serverMap = serverMap;
     }
 
-    void logInput(String line) {
-        print(inputLogStream, "<- ", line);
+    public void setUserMap(UserMap userMap) {
+        this.userMap = userMap;
+        if (!userMap.contains(this))
+            userMap.addUser(this);
     }
 
-    void logOutput(String line) {
-        print(outputLogStream, "-> ", line);
+    @Override
+    public void action(String action, Object... objects) throws ConnectionStateException {
+        ctcp("ACTION", action, objects);
     }
 
-    void logTrace(String line) {
-        print(errorLogStream, "<==> ", line);
+    @Override
+    public void ctcp(String command, String args, Object... objects) throws ConnectionStateException {
+        send("PRIVMSG " + getNick() + " :\1" + command + " " + args + "\1", objects);
+    }
+
+    @Override
+    public void debug() {
+        log(getIdentity());
+        if (!getRealname().isEmpty())
+            log("   Real name: " + getRealname());
+        if (getServer() != null)
+            log("   Server: " + getServer());
+        if (isIdentified())
+            log("   Nickserv login: " + getNickservLogin());
+        log("   Known: " + isKnown());
+        log("   Permissions: " + StringUtils.compact(getPermissions()));
+        if (getModes().size() > 0)
+            log("   Modes: " + StringUtils.compact(getModes(), ""));
+    }
+
+    @Override
+    public ArcheBot getBot() {
+        return this;
+    }
+
+    @Override
+    public void message(String message, Object... objects) throws ConnectionStateException {
+        send("PRIVMSG " + getNick() + " :" + message, objects);
+    }
+
+    @Override
+    public void notice(String notice, Object... objects) throws ConnectionStateException {
+        send("NOTICE " + getNick() + " :" + notice, objects);
+    }
+
+    protected void logInput(String line) {
+        print("<- ", line);
+    }
+
+    protected void logOutput(String line) {
+        print("-> ", line);
+    }
+
+    protected void logTrace(String line) {
+        print("<==> ", line);
     }
 
     void setState(State state) {
@@ -264,7 +347,12 @@ public class ArcheBot extends User {
         connection = null;
         handler.onDisconnect(this, reason);
         connectTime = 0;
-        clearData();
+        if (configuration.getBoolean(Property.autoSavePerms))
+            userMap.forEach(configuration::storePermissions);
+        channelMap.clear();
+        serverMap.clear();
+        userMap.clear();
+        clearModes();
         if (configuration.getBoolean(Property.autoSaveConfig))
             try {
                 configuration.save();
@@ -275,11 +363,11 @@ public class ArcheBot extends User {
         state = State.idle;
     }
 
-    private synchronized void print(PrintStream stream, String prefix, String line) {
+    private synchronized void print(String prefix, String line) {
         if (configuration.getBoolean(Property.enableLogging)) {
-            stream.print(dateFormat.format(new Date()));
-            stream.print(prefix);
-            stream.println(line);
+            logStream.print(dateFormat.format(new Date()));
+            logStream.print(prefix);
+            logStream.println(line);
         }
     }
 }
