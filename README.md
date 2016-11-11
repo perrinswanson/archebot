@@ -9,12 +9,9 @@ Another special thing with ArcheBot is PML, aka Property Markup Language (or may
 
 To simplify interaction with the server, ArcheBot provides a wide variety of classes that can be used, including: Handlers, Channels, Servers, and Users.
 
-The most basic bot can be made in just four lines of code:
+As of ArcheBot 2.1, the most basic bot can be made in just one line of code:
 
-ArcheBot bot = new ArcheBot();
-bot.getConfiguration().setNick("ArcheBot");
-bot.getConfiguration().setServer("my.irc.server.com");
-bot.connect();
+new ArcheBot("ArcheBot", "irc.server.com").connect();
 
 But, of course, additional code is encouraged!
 
